@@ -1,11 +1,4 @@
-# MUTE
-##     ## ##     ## ######## ######## 
-###   ### ##     ##    ##    ##       
-#### #### ##     ##    ##    ##       
-## ### ## ##     ##    ##    ######   
-##     ## ##     ##    ##    ##       
-##     ## ##     ##    ##    ##       
-##     ##  #######     ##    ######## 
+# MUTE PROJECT                                     
 
 DISCLAIMER: This application is NOT for educational purposes.
 Abusing this program might be an ilegal action.
@@ -17,18 +10,18 @@ YOU'RE EXPECTED TO KNOW WHAT YOU'RE DOING
 Description: MUTE (WxKill) is an Python Application that kills wifi signals
 
 REQUIRED PACKAGES:
-Aircrack-NG suite (aireplay-ng; airmon-ng; airodump-ng) 
+## Aircrack-NG suite (aireplay-ng; airmon-ng; airodump-ng) 
 
 Install in one command (Debian/ Ubuntu):
-apt install aircrack-ng
+## apt install aircrack-ng
 
 If there's an error, add the following line to /etc/apt/sources.list:
-deb http://http.kali.org/kali kali-rolling main contrib non-free
+## deb http://http.kali.org/kali kali-rolling main contrib non-free
 
 Then type
-apt update && apt install aircrack-ng
+## apt update && apt install aircrack-ng
 
-MUTE USAGE:
+# MUTE USAGE:
 
 1. Python3 /path/too/file/mute.py
 2. Select the interface you want to use
