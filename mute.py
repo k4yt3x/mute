@@ -9,9 +9,15 @@ Licensed under the GNU General Public License Version 3 (GNU GPL v3)
 
 This program is DESIGNED FOR LINUX SYSTEM.
 Program MUST be ran with ROOT ACCESS.
-This program is for educational purpose only.
-Please obey your local law.
-The developer will not be responsible for abusing of this program
+
+DISCLAIMER: This application is NOT for educational purposes.
+Abusing this program might be an ilegal action.
+Use this program ON YOUR OWN RISK. The authors of this program
+won't be responsible to any results caused by abusing this program.
+
+YOU'RE EXPECTED TO KNOW WHAT YOU'RE DOING
+
+Description: MUTE (WxKill) is an Python Application that kills wifi signals
 
 CHANGELOG:
 Version: 1.2
@@ -279,7 +285,7 @@ def aireplay():
 
 def print_icon():
     """
-    Prints the MUTE Icon
+    Prints the MUTE Iconl
     """
     os.system('clear')
     width, height = shutil.get_terminal_size((80, 20))
