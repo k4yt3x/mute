@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 
 """
-MUTE 1.4.2
+MUTE 1.4.3
 Developer K4T
 Developer f4llen
 
@@ -26,16 +26,14 @@ YOU'RE EXPECTED TO KNOW WHAT YOU'RE DOING
 Description: MUTE (WxKill) is an Python Application that kills wifi signals
 
 CHANGELOG:
-Version: 1.4.2
+Version: 1.4.3
 Date: 01/22/2017
 
-1. More Art works done:
-    Now the icon will adjust itself better according to the screen size
-    Now displays startup-checking sequance
+1. Minor Bug Fixes
 
 
 TODO:
-1. Continue developing Arguments
+1. Continue developing arguments
 """
 
 from __future__ import print_function
@@ -56,7 +54,7 @@ OR = '\033[33m'  # orange
 Y = '\033[93m'  # yellow
 B = '\033[34m'  # blue
 P = '\033[35m'  # purple
-C = '\033[36m'  # cyan
+C = '\033[96m'  # cyan
 GR = '\033[37m'  # grey
 H = '\033[8m'  # hidden
 NH = '\033[28m'  # not hidden
@@ -70,15 +68,21 @@ FIRST_START = True
 # --------------------------------Function Defining--------------------------------
 
 def check_root():
+    print(OR + '[X] STARTUP: ' + W + 'Checking Privilege.............' + W, end='')
     if os.getuid() != 0:
-        print(R + '[!] MUTE MUST be run with root access' + W)
+        print(R + 'ERROR' + W)
+        print(R + '[!] ERROR: MUTE MUST be run with root access' + W)
         exit(1)
+    print(G + 'OK!' + W)
 
 
 def check_platform():
+    print(OR + '[X] STARTUP: ' + W + 'Checking Platform..............' + W, end='')
     if not os.uname()[0].startswith('Linux'):
-        print(R + '[!] MUTE can only be run in linux platform')
+        print(R + 'ERROR' + W)
+        print(R + '[!] ERROR: MUTE can only be run in linux platform')
         exit(1)
+    print(G + 'OK!' + W)
 
 
 def process_arguments():
@@ -103,11 +107,14 @@ def internet_connected():
     This fucntion detects if the internet is available
     Returns a Boolean value
     """
+    print(OR + '[X] STARTUP: ' + W + 'Checking Internet..............' + W, end='')
     try:
         print(Y + '[+] INFO: Detecting Internet Connectivity...')
         socket.create_connection(('172.217.3.3', 443), 10)  # Test connection by connecting to google
+        print(G + 'OK!' + W)
         return True
     except socket.error:
+        print(R + 'FAILED' + W)
         return False
 
 
@@ -116,9 +123,12 @@ def check_aircrack():
     Check if Aircrack-NG Suite Is installed in the system
     Install Aircrack-NG Suite if not installed
     """
+    print(OR + '[X] STARTUP: ' + W + 'Checking Aircrack..............' + W, end='')
     if os.path.isfile('/usr/bin/aircrack-ng'):
+        print(G + 'OK!' + W)
         return True
     else:
+        print(R + 'FAILED' + W)
         print(P + '[!] CRITICAL:  Aircrack-NG Suite is not installed!' + W)
         insair = input(Y + '[OPERATION] Do you want MUTE to install it for you? [Y/n]: ' + G)
         print(W, end='', flush=True)
@@ -658,15 +668,9 @@ def main():
 os.system('clear')
 # Check Requirements
 print(OR + '[X] STARTUP: ' + C + 'Checking Requirements:' + W)
-print(OR + '[X] STARTUP: ' + W + 'Checking Privilege.............' + W, end='')
 check_root()
-print(G + 'OK!' + W)
-print(OR + '[X] STARTUP: ' + W + 'Checking Platform..............' + W, end='')
 check_platform()
-print(G + 'OK!' + W)
-print(OR + '[X] STARTUP: ' + W + 'Checking Aircrack..............' + W, end='')
 check_aircrack()
-print(G + 'OK!' + W)
 print(OR + '[X] STARTUP END:' + G + ' ALL OK!\n' + W)
 
 process_arguments()  # Handle All Argument Inputs
@@ -681,22 +685,22 @@ while True:
             print(G + '\n\n[+] INFO: Adapter Exiting Monitor Mode...' + W)
             disable_monitor(monface)
             print(W, end='', flush=True)
-            print(Y + '\n[+] INFO:Exiting MUTE Program\n' + W)
+            print(Y + '\n[+] INFO: Exiting MUTE Program\n' + W)
         else:
-            print(Y + '\n\n[+] INFO:Exiting MUTE Program\n' + W)
+            print(Y + '\n\n[+] INFO: Exiting MUTE Program\n' + W)
         exit(0)
     except KeyboardInterrupt:
         if AT_IN_MON:
             print(OR + '\n\n[+] INFO:Adapter Exiting Monitor Mode...' + W)
             disable_monitor(monface)
             print(W, end='', flush=True)
-            print(Y + '\n[+] INFO:Exiting MUTE Program\n' + W)
+            print(Y + '\n[+] INFO: Exiting MUTE Program\n' + W)
         else:
-            print(Y + '\n\n[+] INFO:Exiting MUTE Program\n' + W)
+            print(Y + '\n\n[+] INFO: Exiting MUTE Program\n' + W)
         exit(0)
     except Exception as er:
         print(P + '[!] CRITICAL:  Error Detected!' + W)
-        print(R + str(er))
+        print(R + '[!] ERROR: ' + str(er))
         while True:
             restart = input('[?] USER: Restart Program? [Y/n]: ' + G)
             print(W, end='', flush=True)
