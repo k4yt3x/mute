@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 
 """
-MUTE 1.4.1
+MUTE 1.4.2
 Developer K4T
 Developer f4llen
 
@@ -26,13 +26,12 @@ YOU'RE EXPECTED TO KNOW WHAT YOU'RE DOING
 Description: MUTE (WxKill) is an Python Application that kills wifi signals
 
 CHANGELOG:
-Version: 1.4.1
-Date: 01/10/2017
+Version: 1.4.2
+Date: 01/22/2017
 
-1. Now supports arguments
-2. Added Function Installing Mute into System
-3. Added Batch Mode
-4. Minor Bug fixes
+1. More Art works done:
+    Now the icon will adjust itself better according to the screen size
+    Now displays startup-checking sequance
 
 
 TODO:
@@ -65,6 +64,7 @@ NH = '\033[28m'  # not hidden
 AT_IN_MON = False  # True if adapter in monitor mode
 DUMP = '/tmp/mute-01.csv'  # The airodump file location
 DEV_FILE = '/proc/net/dev'  # System dev file, contains all network interfaces' info
+FIRST_START = True
 
 
 # --------------------------------Function Defining--------------------------------
@@ -116,7 +116,6 @@ def check_aircrack():
     Check if Aircrack-NG Suite Is installed in the system
     Install Aircrack-NG Suite if not installed
     """
-    print(G + '[INFO] Checking Requirements...')
     if os.path.isfile('/usr/bin/aircrack-ng'):
         return True
     else:
@@ -502,11 +501,13 @@ def print_icon():
     """
     Prints the MUTE Icon according to the width & height
     """
-    os.system('clear')
+    global FIRST_START
+    if FIRST_START is False:
+        os.system('clear')
     width, height = shutil.get_terminal_size((80, 20))
     space = (width - 39) // 2 * ' '
     middle = (height - 20) // 2
-    for _ in range(middle):
+    for _ in range(middle - 6):
         print('')  # Which is a '\n'
     print(space + W + '    ####' + R + '#####' + W + '##         ##' + R + '#####' + W + '####')
     print(space + R + '         ####             ####')
@@ -517,16 +518,19 @@ def print_icon():
     print(space + R + '              ##       ##')
     print(space + R + '           ###           ###')
     print(space + R + '         ######         ######')
-    print(space + W + '########' + R + '#####' + W + '#           #' + R + '#####' + W + '########\n\n')
+    print(space + W + '########' + R + '#####' + W + '#           #' + R + '#####' + W + '########')
     print('')
-    space = (width - 37) // 2 * ' '
-    print(space + R + '##     ##  ' + W + '##     ## ######## ######## ')
-    print(space + R + '###   ###  ' + W + '##     ##    ##    ##       ')
-    print(space + R + '#### ####  ' + W + '##     ##    ##    ##       ')
-    print(space + R + '## ### ##  ' + W + '##     ##    ##    ######   ')
-    print(space + R + '##     ##  ' + W + '##     ##    ##    ##       ')
-    print(space + R + '##     ##  ' + W + '##     ##    ##    ##       ')
-    print(space + R + '##     ##  ' + W + ' #######     ##    ######## ')
+    if not height < 31:
+        print('\n')
+        space = (width - 37) // 2 * ' '
+        print(space + R + '##     ##  ' + W + '##     ## ######## ######## ')
+        print(space + R + '###   ###  ' + W + '##     ##    ##    ##       ')
+        print(space + R + '#### ####  ' + W + '##     ##    ##    ##       ')
+        print(space + R + '## ### ##  ' + W + '##     ##    ##    ######   ')
+        print(space + R + '##     ##  ' + W + '##     ##    ##    ##       ')
+        print(space + R + '##     ##  ' + W + '##     ##    ##    ##       ')
+        print(space + R + '##     ##  ' + W + ' #######     ##    ########\n')
+    FIRST_START = False
 
 
 def main():
@@ -651,10 +655,19 @@ def main():
 
 # --------------------------------Program Entry--------------------------------
 
+os.system('clear')
 # Check Requirements
+print(OR + '[X] STARTUP: ' + C + 'Checking Requirements:' + W)
+print(OR + '[X] STARTUP: ' + W + 'Checking Privilege.............' + W, end='')
 check_root()
+print(G + 'OK!' + W)
+print(OR + '[X] STARTUP: ' + W + 'Checking Platform..............' + W, end='')
 check_platform()
+print(G + 'OK!' + W)
+print(OR + '[X] STARTUP: ' + W + 'Checking Aircrack..............' + W, end='')
 check_aircrack()
+print(G + 'OK!' + W)
+print(OR + '[X] STARTUP END:' + G + ' ALL OK!\n' + W)
 
 process_arguments()  # Handle All Argument Inputs
 
