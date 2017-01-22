@@ -13,13 +13,19 @@ REQUIRED PACKAGES:
 ## Aircrack-NG suite (aireplay-ng; airmon-ng; airodump-ng) 
 
 Install in one command (Debian/ Ubuntu):
-## apt install aircrack-ng
+~~~~
+# apt install aircrack-ng
+~~~~
 
 If there's an error, add the following line to /etc/apt/sources.list:
-## deb http://http.kali.org/kali kali-rolling main contrib non-free
+~~~~
+deb http://http.kali.org/kali kali-rolling main contrib non-free
+~~~~
 
 Then type
-## apt update && apt install aircrack-ng
+~~~~
+# apt update && apt install aircrack-ng
+~~~~
 
 # MUTE USAGE:
 
@@ -32,3 +38,9 @@ Then type
 6. Then MUTE program will call aireplay-ng to start attacking the target wifi
 7. Press Ctrl+C when you want to stop the attack
 8. MUTE program disables monitor mode on adapter and exit
+
+
+# MORE USAGES:
+~~~~
+mute -s, --install  # Installs Newest Mute to System from GitHub
+~~~~
