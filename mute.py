@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 
 """
-MUTE 1.4.3
+MUTE 1.4.4
 Developer K4T
 Developer f4llen
 
@@ -11,7 +11,7 @@ Licensed under the GNU General Public License Version 3 (GNU GPL v3),
     available at: https://www.gnu.org/licenses/gpl-3.0.txt
 
 (C) 2017 K4YT3X
-(C) 2017 f4llen
+(C) 2017 fa11en
 
 This program is DESIGNED FOR LINUX SYSTEM.
 Program MUST be ran with ROOT ACCESS.
@@ -26,10 +26,10 @@ YOU'RE EXPECTED TO KNOW WHAT YOU'RE DOING
 Description: MUTE (WxKill) is an Python Application that kills wifi signals
 
 CHANGELOG:
-Version: 1.4.3
+Version: 1.4.4
 Date: 01/22/2017
 
-1. Minor Bug Fixes
+1. Fixed Installation System
 
 
 TODO:
@@ -44,6 +44,7 @@ import multiprocessing
 import shutil
 import socket
 import argparse
+import urllib.request
 
 # Console colors
 # Unix Console colors
@@ -63,6 +64,9 @@ AT_IN_MON = False  # True if adapter in monitor mode
 DUMP = '/tmp/mute-01.csv'  # The airodump file location
 DEV_FILE = '/proc/net/dev'  # System dev file, contains all network interfaces' info
 FIRST_START = True
+INSTALLED = False
+STARTUP = True
+VERSION = '1.4.4'
 
 
 # --------------------------------Function Defining--------------------------------
@@ -85,6 +89,32 @@ def check_platform():
     print(G + 'OK!' + W)
 
 
+def check_version():
+    internet = internet_connected()
+    print(OR + '[X] STARTUP: ' + W + 'Checking Version...............' + W, end='')
+    if internet:
+        with urllib.request.urlopen('https://raw.githubusercontent.com/K4YT3X/MUTE/master/mute.py') as response:
+            html = response.read()
+            server_version = html.decode().split('\n')[5][5:]
+            if server_version > VERSION:
+                print(R + 'OLD' + W)
+                print(G + '[+] INFO: There\'s a new version!' + W)
+                while True:
+                    upgrade = input('[?] USER: Upgrade to newest version?[Y/n]: ')
+                    if upgrade[0].upper() == '' or upgrade[0].upper() == 'Y':
+                        sysupdate()
+                    elif upgrade[0].upper() == 'N':
+                        break
+                    else:
+                        print('[!] ERROR: Invalid Input!')
+                        continue
+            else:
+                print(G + 'NEWEST!' + W)
+        return server_version
+    else:
+        print(R + 'FAILED' + W)
+
+
 def process_arguments():
     """
     This funtion takes care of all arguments
@@ -93,11 +123,12 @@ def process_arguments():
     parser = argparse.ArgumentParser()
     options_group = parser.add_argument_group('OPTIONS')
     options_group.add_argument("-s", "--install", help="-s, --install: Install mute into system", action="store_true")
+    options_group.add_argument("-l", "--local", help="-s, --install: Install mute into system locally, work with -s", action="store_true")
 
     action_group = parser.add_argument_group('ACTIONS')
     action_group.add_argument("-i", "--interface", help="-i [interface], --interface [interface]: Choose Interface", action="store_true")
     action_group.add_argument("-A", "--automatic", help="-A, --automatic: Automatically mutes strongest signal", action="store_true")
-    action_group.add_argument("-B", "--batch", help="-B, --batch: automatically selects the default option", action="store_true")
+    action_group.add_argument("-B", "--batch", help="-B, --batch: Automatically selects the default option", action="store_true")
 
     args = parser.parse_args()
 
@@ -107,14 +138,17 @@ def internet_connected():
     This fucntion detects if the internet is available
     Returns a Boolean value
     """
-    print(OR + '[X] STARTUP: ' + W + 'Checking Internet..............' + W, end='')
+    if STARTUP:
+        print(OR + '[X] STARTUP: ' + W + 'Checking Internet..............' + W, end='')
+    else:
+        print(Y + '[+] INFO: ' + W + 'Checking Internet.................' + W, end='')
     try:
-        print(Y + '[+] INFO: Detecting Internet Connectivity...')
-        socket.create_connection(('172.217.3.3', 443), 10)  # Test connection by connecting to google
+        socket.create_connection(('172.217.3.3', 443), 5)  # Test connection by connecting to google
+        socket.create_connection(('192.30.253.113', 443), 5)
         print(G + 'OK!' + W)
         return True
     except socket.error:
-        print(R + 'FAILED' + W)
+        print(R + 'NO INTERNET!' + W)
         return False
 
 
@@ -195,21 +229,27 @@ def sysupdate():
         return 1
 
 
-def install_mute():
+def install_mute(mode):
     """
     Installs the software by downloading the newest code from GitHub
     This will download mute.py as mute into /usr/bin
     Which can be run without a suffix and acts like a command / bindary file
     """
+    internet = internet_connected()
     print(G + '[+] INFO Installing MUTE into System...')
-    if internet_connected():
+    if internet and mode == 'OL':
         print(G + '[+] INFO: Internet Conencted, Installing the newest version of MUTE into the syetem' + W)
         os.system('wget https://raw.githubusercontent.com/K4YT3X/MUTE/master/mute.py -O /usr/bin/mute')
         os.system('chmod 777 /usr/bin/mute')
         return 0
+    elif internet and mode == 'OF':
+        print(G + '[+] INFO: Chosen Offline installation ' + Y + '(Might be Outdated!)' + W)
+        os.system('cp ' + os.path.abspath(__file__) + ' /usr/bin/mute')
+        os.system('chmod 777 /usr/bin/mute')
+        return 1
     else:
         print(Y + '[#] WARNING: Not connected to internet!' + W)
-        print(Y + '[#] WARNING: Using Offline installation (Might be outdated)')
+        print(Y + '[#] WARNING: Using Offline installation (Might be outdated)' + W)
         os.system('cp ' + os.path.abspath(__file__) + ' /usr/bin/mute')
         os.system('chmod 777 /usr/bin/mute')
         return 1
@@ -517,7 +557,7 @@ def print_icon():
     width, height = shutil.get_terminal_size((80, 20))
     space = (width - 39) // 2 * ' '
     middle = (height - 20) // 2
-    for _ in range(middle - 6):
+    for _ in range(middle - 10):
         print('')  # Which is a '\n'
     print(space + W + '    ####' + R + '#####' + W + '##         ##' + R + '#####' + W + '####')
     print(space + R + '         ####             ####')
@@ -529,9 +569,8 @@ def print_icon():
     print(space + R + '           ###           ###')
     print(space + R + '         ######         ######')
     print(space + W + '########' + R + '#####' + W + '#           #' + R + '#####' + W + '########')
-    print('')
+    print('\n')
     if not height < 31:
-        print('\n')
         space = (width - 37) // 2 * ' '
         print(space + R + '##     ##  ' + W + '##     ## ######## ######## ')
         print(space + R + '###   ###  ' + W + '##     ##    ##    ##       ')
@@ -539,7 +578,9 @@ def print_icon():
         print(space + R + '## ### ##  ' + W + '##     ##    ##    ######   ')
         print(space + R + '##     ##  ' + W + '##     ##    ##    ##       ')
         print(space + R + '##     ##  ' + W + '##     ##    ##    ##       ')
-        print(space + R + '##     ##  ' + W + ' #######     ##    ########\n')
+        print(space + R + '##     ##  ' + W + ' #######     ##    ######## ')
+    space = (width - 32) // 2 * ' '
+    print('\n' + space + GR + '(C) K4YT3X 2017  (C) fa11en 2017' + W)
     FIRST_START = False
 
 
@@ -665,18 +706,52 @@ def main():
 
 # --------------------------------Program Entry--------------------------------
 
-os.system('clear')
-# Check Requirements
-print(OR + '[X] STARTUP: ' + C + 'Checking Requirements:' + W)
-check_root()
-check_platform()
-check_aircrack()
-print(OR + '[X] STARTUP END:' + G + ' ALL OK!\n' + W)
+try:
+    process_arguments()  # Handle All Argument Inputs
 
-process_arguments()  # Handle All Argument Inputs
+    if args.install and args.local:
+        os.system('clear')
+        install_mute('OF')
+        INSTALLED = True
+    elif args.install:
+        os.system('clear')
+        install_mute('OL')
+        INSTALLED = True
+    else:
+        os.system('clear')
 
-if args.install:
-    install_mute()
+    # Check Requirements
+    if INSTALLED:
+        print(G + '[+] INFO: MUTE Successfully Installed into System!' + W)
+    check_root()
+    check_platform()
+    check_aircrack()
+    check_version()
+    print(OR + '[X] STARTUP END:' + G + ' ALL OK!\n' + W)
+    STARTUP = False
+except KeyboardInterrupt:
+    if AT_IN_MON:
+        print(OR + '\n\n[+] INFO:Adapter Exiting Monitor Mode...' + W)
+        disable_monitor(monface)
+        print(W, end='', flush=True)
+        print(Y + '\n[+] INFO: Exiting MUTE Program\n' + W)
+    else:
+        print(Y + '\n\n[+] INFO: Exiting MUTE Program\n' + W)
+        exit(0)
+except Exception as er:
+    print(P + '[!] CRITICAL:  Error Detected!' + W)
+    print(R + '[!] ERROR: ' + str(er))
+    print(R + '[+] INFO: Exiting Program due to Errors...' + W)
+    if AT_IN_MON:
+        print(OR + '\n\n[+] INFO: Adapter Exiting Monitor Mode...' + W)
+        disable_monitor(monface)
+        print(W, end='', flush=True)
+        print(OR + '\n[+] INFO: Exiting MUTE Program\n' + W)
+        exit(0)
+    else:
+        print(Y + '\n\n[+] INFO: Exiting MUTE Program\n' + W)
+        exit(0)
+
 
 while True:
     try:
