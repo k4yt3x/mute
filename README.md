@@ -1,7 +1,7 @@
 # MUTE PROJECT                                     
 
 DISCLAIMER: This application is NOT for educational purposes.
-Abusing this program might be an ilegal action.
+Abusing this program might be an illegal action.
 Use this program ON YOUR OWN RISK. The authors of this program
 won't be responsible to any results caused by abusing this program.
 
